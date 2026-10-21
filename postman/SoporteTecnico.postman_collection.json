@@ -1,0 +1,520 @@
+{
+  "info": {
+    "name": "Soporte tecnico - Parcial Zegel",
+    "description": "Ejecutar las 18 peticiones en orden con la API encendida. Datos ficticios. La coleccion crea y elimina su propia solicitud.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "solicitudId",
+      "value": ""
+    },
+    {
+      "key": "fechaCreacion",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Registrar solicitud",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": null,\n  \"estado\": \"PENDIENTE\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 201\", function () { pm.response.to.have.status(201); });",
+              "if (pm.response.code === 201) { const s=pm.response.json(); pm.collectionVariables.set(\"solicitudId\", s.id); pm.collectionVariables.set(\"fechaCreacion\", s.fechaCreacion); }",
+              "pm.test(\"Location e identidad\", function () { pm.expect(pm.response.headers.get(\"Location\")).to.include(\"/api/v1/solicitudes/\"); pm.expect(pm.response.json().id).to.be.a(\"number\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 - Listar solicitudes",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Incluye solicitud creada\", function () { pm.expect(pm.response.json().some(s => s.id === Number(pm.collectionVariables.get(\"solicitudId\")))).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 - Consultar por id",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"ID esperado\", function () { pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get(\"solicitudId\"))); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 - Actualizar y asignar tecnico",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": {\n    \"nombre\": \"Luis Perez\",\n    \"email\": \"luis@example.com\"\n  },\n  \"estado\": \"EN_PROCESO\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Actualiza sin cambiar identidad ni creacion\", function () { const s=pm.response.json(); pm.expect(s.id).to.eql(Number(pm.collectionVariables.get(\"solicitudId\"))); pm.expect(s.fechaCreacion).to.eql(pm.collectionVariables.get(\"fechaCreacion\")); pm.expect(s.estado).to.eql(\"EN_PROCESO\"); pm.expect(s.tecnico.nombre).to.eql(\"Luis Perez\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 - Filtrar por estado",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes?estado=EN_PROCESO"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Filtro correcto\", function () { const datos=pm.response.json(); pm.expect(datos.length).to.be.above(0); pm.expect(datos.every(s => s.estado === \"EN_PROCESO\")).to.eql(true); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 - Rechazar asunto vacio",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \" \",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": null,\n  \"estado\": \"PENDIENTE\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "07 - Rechazar correo invalido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana\",\n    \"email\": \"incorrecto\"\n  },\n  \"tecnico\": null,\n  \"estado\": \"PENDIENTE\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "08 - Rechazar cliente ausente",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": null,\n  \"tecnico\": null,\n  \"estado\": \"PENDIENTE\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "09 - Rechazar estado desconocido",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": null,\n  \"estado\": \"OTRO\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "10 - Rechazar resolucion sin tecnico",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": null,\n  \"estado\": \"RESUELTA\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "11 - Comprobar que el error no modifico datos",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Conserva EN_PROCESO\", function () { pm.expect(pm.response.json().estado).to.eql(\"EN_PROCESO\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "12 - Resolver solicitud",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"asunto\": \"Computadora sin encender\",\n  \"descripcion\": \"No responde al boton de encendido\",\n  \"cliente\": {\n    \"nombre\": \"Ana Torres\",\n    \"email\": \"ana@example.com\"\n  },\n  \"tecnico\": {\n    \"nombre\": \"Luis Perez\",\n    \"email\": \"luis@example.com\"\n  },\n  \"estado\": \"RESUELTA\",\n  \"prioridad\": \"ALTA\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Resuelta\", function () { pm.expect(pm.response.json().estado).to.eql(\"RESUELTA\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "13 - Identificador invalido",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/0"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "14 - Solicitud inexistente",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/9223372036854775807"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "15 - JSON mal formado",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/solicitudes",
+        "body": {
+          "mode": "raw",
+          "raw": "{",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 400\", function () { pm.response.to.have.status(400); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "16 - Eliminar solicitud",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 204\", function () { pm.response.to.have.status(204); });",
+              "pm.test(\"Sin cuerpo\", function () { pm.expect(pm.response.text()).to.eql(\"\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "17 - Consultar eliminada",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "18 - Eliminar nuevamente",
+      "request": {
+        "method": "DELETE",
+        "header": [],
+        "url": "{{baseUrl}}/api/v1/solicitudes/{{solicitudId}}"
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"HTTP 404\", function () { pm.response.to.have.status(404); });",
+              "",
+              "pm.test(\"Error consistente\", function () { const e=pm.response.json(); pm.expect(e.status).to.eql(pm.response.code); pm.expect(e.mensaje).to.be.a(\"string\"); pm.expect(e.ruta).to.be.a(\"string\"); pm.expect(e.detalles).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
